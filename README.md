@@ -1,4 +1,4 @@
-![Diagram](./assets/front_page_banner.png)
+![Diagram](https://github.com/poppyszn/AWS-Projects/blob/main/assets/front_page_banner.jpg)
 
 # 🚀 AWS Projects Portfolio
 
