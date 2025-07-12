@@ -1,0 +1,39 @@
+---
+- name: Update apt package cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Upgrade all packages to latest version
+  apt:
+    upgrade: dist
+    autoremove: yes
+    autoclean: yes
+
+# Install JDK (not just JRE) - this includes javac compiler
+- name: Install OpenJDK 17 JDK (includes compiler)
+  apt:
+    name: 
+      - openjdk-17-jdk
+      - openjdk-17-jdk-headless
+    state: present
+
+- name: Install Tomcat 10 and related packages
+  apt:
+    name:
+      - tomcat10
+      - tomcat10-admin
+      - tomcat10-docs
+      - tomcat10-common
+      - git
+      - python3-boto3  # For AWS S3 tasks
+    state: present
+    force: yes
+    update_cache: yes
+
+- name: Ensure Tomcat service is started and enabled
+  systemd:
+    name: tomcat10
+    state: started
+    enabled: yes
+

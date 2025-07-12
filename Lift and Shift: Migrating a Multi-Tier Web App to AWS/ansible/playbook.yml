@@ -1,0 +1,78 @@
+---
+# Get Terraform outputs first (run locally)
+- name: Get Terraform outputs
+  hosts: localhost
+  connection: local
+  gather_facts: no
+  
+  tasks:
+    - name: Read Terraform outputs
+      set_fact:
+        terraform_outputs: "{{ lookup('file', 'terraform_outputs.json') | from_json }}"
+        
+    - name: Set S3 bucket name for other plays
+      set_fact:
+        s3_bucket_name: "{{ terraform_outputs.s3_bucket_name.value }}"
+
+# Configure infrastructure servers
+- name: Configure Tomcat Server
+  hosts: tomcat
+  become: yes
+  gather_facts: yes
+  tasks:
+    - name: Setup Tomcat Server
+      include_tasks: tasks/tomcat.yml
+  handlers:
+    - name: restart tomcat
+      systemd:
+        name: tomcat10
+        state: restarted
+        daemon_reload: yes
+      
+- name: Configure MySQL Server
+  hosts: mysql
+  become: yes
+  gather_facts: yes
+  tasks:
+    - name: Setup MySQL Server
+      include_tasks: tasks/mysql.yml
+
+- name: Configure RabbitMQ Server
+  hosts: rabbitmq
+  become: yes
+  gather_facts: yes
+  tasks:
+    - name: Setup RabbitMQ Server
+      include_tasks: tasks/rabbitmq.yml
+  handlers:
+    - name: restart rabbitmq
+      systemd:
+        name: rabbitmq-server
+        state: restarted
+
+- name: Configure Memcache Server
+  hosts: memcache
+  become: yes
+  gather_facts: yes
+  tasks:
+    - name: Setup Memcache Server
+      include_tasks: tasks/memcache.yml
+  handlers:
+    - name: restart memcached
+      systemd:
+        name: memcached
+        state: restarted
+
+# Build and deploy application
+- name: Build and deploy application
+  hosts: tomcat
+  #become: yes
+  gather_facts: yes
+  vars:
+    s3_bucket_name: "{{ hostvars['localhost']['s3_bucket_name'] }}"
+    app_source_dir: "../source"
+    app_war_name: "vprofile-v2.war"
+    aws_region: "eu-west-1"
+  tasks:
+    - name: Deploy application from S3
+      include_tasks: tasks/app_deploy.yml

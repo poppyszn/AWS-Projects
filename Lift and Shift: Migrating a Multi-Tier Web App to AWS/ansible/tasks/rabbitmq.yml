@@ -1,0 +1,71 @@
+---
+- name: Import RabbitMQ signing key
+  rpm_key:
+    key: 'https://github.com/rabbitmq/signing-keys/releases/download/3.0/rabbitmq-release-signing-key.asc'
+    state: present
+
+- name: Import modern Erlang repository signing key
+  rpm_key:
+    key: 'https://github.com/rabbitmq/signing-keys/releases/download/3.0/cloudsmith.rabbitmq-erlang.E495BB49CC4BBE5B.key'
+    state: present
+
+- name: Import RabbitMQ server repository signing key
+  rpm_key:
+    key: 'https://github.com/rabbitmq/signing-keys/releases/download/3.0/cloudsmith.rabbitmq-server.9F4587F226208342.key'
+    state: present
+
+- name: Download RabbitMQ repository configuration
+  get_url:
+    url: https://raw.githubusercontent.com/hkhcoder/vprofile-project/refs/heads/awsliftandshift/al2023rmq.repo
+    dest: /etc/yum.repos.d/rabbitmq.repo
+    mode: '0644'
+
+- name: Update dnf package cache
+  dnf:
+    update_cache: yes
+
+- name: Install RabbitMQ dependencies
+  dnf:
+    name:
+      - socat
+      - logrotate
+    state: present
+
+- name: Install RabbitMQ and Erlang
+  dnf:
+    name:
+      - erlang
+      - rabbitmq-server
+    state: present
+
+- name: Enable and start RabbitMQ service
+  systemd:
+    name: rabbitmq-server
+    state: started
+    enabled: yes
+
+- name: Create RabbitMQ configuration file
+  copy:
+    content: '[{rabbit, [{loopback_users, []}]}].'
+    dest: /etc/rabbitmq/rabbitmq.config
+    mode: '0644'
+    owner: root
+    group: root
+  notify: restart rabbitmq
+
+- name: Add RabbitMQ user 'test'
+  rabbitmq_user:
+    user: test
+    password: test
+    tags: administrator
+    permissions:
+      - vhost: /
+        configure_priv: .*
+        read_priv: .*
+        write_priv: .*
+    state: present
+
+- name: Restart RabbitMQ service after configuration
+  systemd:
+    name: rabbitmq-server
+    state: restarted

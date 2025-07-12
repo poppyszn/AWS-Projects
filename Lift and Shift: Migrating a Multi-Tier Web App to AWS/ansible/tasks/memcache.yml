@@ -1,0 +1,42 @@
+---
+- name: Install memcached
+  dnf:
+    name: memcached
+    state: present
+
+- name: Start and enable memcached service
+  systemd:
+    name: memcached
+    state: started
+    enabled: yes
+
+- name: Configure memcached to listen on all interfaces
+  lineinfile:
+    path: /etc/sysconfig/memcached
+    regexp: '^OPTIONS=.*-l 127\.0\.0\.1.*'
+    line: 'OPTIONS="-l 0.0.0.0"'
+    backup: yes
+  notify: restart memcached
+
+- name: Alternative configuration method - replace IP address
+  replace:
+    path: /etc/sysconfig/memcached
+    regexp: '127\.0\.0\.1'
+    replace: '0.0.0.0'
+    backup: yes
+  notify: restart memcached
+
+- name: Restart memcached service after configuration
+  systemd:
+    name: memcached
+    state: restarted
+
+- name: Verify memcached is running
+  systemd:
+    name: memcached
+    state: started
+  register: memcached_status
+
+- name: Display memcached service status
+  debug:
+    msg: "Memcached service is {{ memcached_status.status.ActiveState }}"

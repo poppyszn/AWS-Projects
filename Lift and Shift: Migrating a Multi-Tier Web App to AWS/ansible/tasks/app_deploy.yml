@@ -1,0 +1,66 @@
+---
+# Build tasks (run on local machine/build server)
+- name: Build application with Maven
+  command: mvn clean package -DskipTests
+  args:
+    chdir: "{{ app_source_dir | default('./') }}"
+  delegate_to: localhost
+  run_once: true
+
+- name: Upload WAR file to S3 bucket
+  aws_s3:
+    bucket: "{{ s3_bucket_name }}"
+    object: "{{ app_war_name | default('vprofile-v2.war') }}"
+    src: "{{ app_source_dir | default('./') }}/target/{{ app_war_name | default('vprofile-v2.war') }}"
+    mode: put
+    region: "{{ aws_region | default('us-east-1') }}"
+  delegate_to: localhost
+  run_once: true
+  vars:
+    ansible_python_interpreter: /home/precious/.local/share/pipx/venvs/ansible/bin/python
+
+# Deploy tasks (run on tomcat servers)
+- name: Download WAR file from S3 to tomcat server
+  aws_s3:
+    bucket: "{{ s3_bucket_name }}"
+    object: "{{ app_war_name | default('vprofile-v2.war') }}"
+    dest: "/tmp/{{ app_war_name | default('vprofile-v2.war') }}"
+    mode: get
+    region: "{{ aws_region | default('us-east-1') }}"
+
+- name: Stop Tomcat service
+  become: yes
+  systemd:
+    name: tomcat10
+    state: stopped
+
+- name: Remove existing webapps directory contents
+  become: yes
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /var/lib/tomcat10/webapps/ROOT
+    - /var/lib/tomcat10/webapps/ROOT.war
+
+- name: Deploy new WAR file as ROOT.war
+  become: yes
+  copy:
+    src: "/tmp/{{ app_war_name | default('vprofile-v2.war') }}"
+    dest: /var/lib/tomcat10/webapps/ROOT.war
+    owner: tomcat
+    group: tomcat
+    mode: '0644'
+    remote_src: yes
+
+- name: Start Tomcat service
+  become: yes
+  systemd:
+    name: tomcat10
+    state: started
+    enabled: yes
+
+- name: Clean up temporary WAR file
+  file:
+    path: "/tmp/{{ app_war_name | default('vprofile-v2.war') }}"
+    state: absent

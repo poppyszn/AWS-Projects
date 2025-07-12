@@ -1,4 +1,5 @@
 ## 📘 Description
+![Diagram](https://github.com/poppyszn/AWS-Projects/blob/main/assets/front_page_banner.jpg)
 
 This project demonstrates a full **Lift-and-Shift migration strategy** for a complex, multi-tier application stack from a local Vagrant-based environment to a scalable, production-grade infrastructure on **Amazon Web Services (AWS)**.
 
