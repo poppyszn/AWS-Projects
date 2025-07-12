@@ -1,0 +1,103 @@
+---
+- name: Update dnf package cache
+  dnf:
+    update_cache: yes
+
+- name: Install required packages
+  dnf:
+    name:
+      - git
+      - zip
+      - unzip
+      - mariadb105-server
+      - python3-pip
+      - python3-devel
+      - gcc
+    state: present
+
+- name: Start and enable MariaDB service
+  systemd:
+    name: mariadb
+    state: started
+    enabled: yes
+
+- name: Clone vprofile project repository
+  git:
+    repo: https://github.com/hkhcoder/vprofile-project.git
+    dest: /tmp/vprofile-project
+    version: main
+    force: yes
+
+- name: Install PyMySQL Python library
+  pip:
+    name: PyMySQL
+    executable: pip3
+
+# Fix: Set root password using socket authentication first
+- name: Set MySQL root password for localhost (first time setup)
+  community.mysql.mysql_user:
+    name: root
+    host: localhost
+    password: "{{ database_password | default('admin123') }}"
+    priv: "*.*:ALL,GRANT"
+    check_implicit_admin: true
+    login_unix_socket: /var/lib/mysql/mysql.sock
+    login_user: root
+    login_password: ""
+  become: yes
+  ignore_errors: yes
+
+# Alternative approach if the above fails - use mysql_secure_installation equivalent
+- name: Check if root password is already set
+  shell: mysqladmin -u root status
+  register: mysql_root_status
+  failed_when: false
+  changed_when: false
+
+- name: Set root password using mysqladmin (if not set)
+  shell: mysqladmin -u root password "{{ database_password | default('admin123') }}"
+  when: mysql_root_status.rc == 0
+  become: yes
+
+- name: Create /root/.my.cnf with root login
+  copy:
+    dest: /root/.my.cnf
+    mode: '0600'
+    content: |
+      [client]
+      user = root
+      password = {{ database_password | default('admin123') }}
+      socket = /var/lib/mysql/mysql.sock
+  become: yes
+
+# Wait a moment for the password to be properly set
+- name: Wait for MySQL to be ready
+  pause:
+    seconds: 3
+
+# Now use the password-based authentication
+- name: Configure MariaDB security and database
+  community.mysql.mysql_query:
+    login_user: root
+    login_password: "{{ database_password | default('admin123') }}"
+    login_unix_socket: /var/lib/mysql/mysql.sock
+    query:
+      - "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1')"
+      - "DELETE FROM mysql.user WHERE User=''"
+      - "DELETE FROM mysql.db WHERE Db='test' OR Db='test\\_%'"
+      - "FLUSH PRIVILEGES"
+      - "CREATE DATABASE IF NOT EXISTS accounts"
+      - "GRANT ALL PRIVILEGES ON accounts.* TO 'admin'@'localhost' IDENTIFIED BY 'admin123'"
+      - "GRANT ALL PRIVILEGES ON accounts.* TO 'admin'@'%' IDENTIFIED BY 'admin123'"
+      - "FLUSH PRIVILEGES"
+  become: yes
+
+- name: Import database schema
+  community.mysql.mysql_db:
+    login_user: root
+    login_password: "{{ database_password | default('admin123') }}"
+    login_unix_socket: /var/lib/mysql/mysql.sock
+    name: accounts
+    state: import
+    target: /tmp/vprofile-project/src/main/resources/db_backup.sql
+  become: yes
