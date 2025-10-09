@@ -1,0 +1,6 @@
+*.pem
+*/terraform_outputs.json
+/source/target
+*.tfvars
+.terraform*
+*.tfstate*
