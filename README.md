@@ -48,6 +48,9 @@ If you're a recruiter or just curious — start [here →](./LiftAndShift-vProfi
 
 ```bash
 📁 AWS-Projects/
-├── Lift and Shift: Migrating a Multi-Tier Web App to AWS/  # Migrating multi-tier app to AWS
-├── assets/  # This is where I store the images for this repo
-└── README.md  # You're here
+├── static-website-hosting-s3/         # Host a static website using S3, Route 53, and IAM
+├── lift-and-shift-multi-tier-app/     # Migrate a multi-tier web app to AWS EC2, RDS, and ALB
+├── serverless-url-shortener/          # Build a serverless URL shortener using Lambda, API Gateway, and DynamoDB
+├── assets/                            # Shared architecture diagrams and images for documentation
+└── README.md                          # Overview of all AWS projects in this portfolio
+
