@@ -83,7 +83,3 @@ After applying, Terraform will display:
 - `api_url` → The base URL of your API Gateway
 - `dynamodb_table_name` → The name of your URL mapping table
 - Lambda function ARNs and IAM role details
-
----
-
-Let me know if you'd like to add a frontend, custom domain, or analytics next!
